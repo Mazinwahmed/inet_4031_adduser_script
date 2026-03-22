@@ -88,3 +88,10 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+# DRY-RUN EXPLAINED: 
+# 'dryrun' is like a safety switch on a power tool. 
+# If the switch is 'ON' (True), the script only 'shows' you what it 
+# would do by printing the commands to the screen. 
+# If the switch is 'OFF' (False), the script actually 'runs' those 
+# commands using os.system() to make real changes to the Linux server.
