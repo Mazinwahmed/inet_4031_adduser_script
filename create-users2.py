@@ -13,30 +13,31 @@ import re
 import sys
 
 def main():
-    # This asks the user at the very start if they want a dry-run or a real run
-    mode = input("Would you like to run in dry-run mode? (Y to dry-run / N to run normally): ")
+    # This asks the user if they want to do a dry run and saves their answer
+    print("Would you like to perform a dry run? Y/N: ")
+    confirmation = open('/dev/tty').readline().strip()
+    
+    # This checks the answer and sets the dryrun mode to true if the user typed Y
+    dryrun = confirmation.strip().upper() == 'Y'
 
     for line in sys.stdin:
-
         # Looks for a hashtag at the very start of a line
         # it is used so the admin can comment out / skip certain users in the file
         match = re.match("^#",line)
-
-        # removes the extra space and splits the line into pieces whenever it sees a colon
+        
+        # removes the extra space and splits the line into pieces whenever it sees
+        # a colon
         fields = line.strip().split(':')
-
-        # This checks if the line was marked to be skipped with a hashtag
-        if match:
-            # If the user chose Y, it prints a message saying the line was skipped
-            if mode == 'Y' or mode == 'y':
-                print("==> Skipping line marked with #: %s" % line.strip())
-            continue
-
-        # This checks if the line is missing any of the 5 data fields
-        if len(fields) != 5:
-            # If the user chose Y, it prints an error message
-            if mode == 'Y' or mode == 'y':
-                print("==> ERROR: Line does not have 5 fields: %s" % line.strip())
+        
+        # checks to see if the line was marked to be skipped with a hashtag or if 
+        # it is missing any of the 5 data fields. If true, it skips the line.
+        if match or len(fields) != 5:
+            # If in dry run mode, this tells the admin exactly why the line was skipped
+            if dryrun:
+                if match:
+                    print("==> Skipping line marked with #: %s" % (line.strip()))
+                else:
+                    print("==> Skipping line because it is missing data: %s" % (line.strip()))
             continue
 
         # these lines pull the specific user info from the list and format the full
@@ -49,30 +50,40 @@ def main():
         # to more than one group
         groups = fields[4].split(',')
 
-        # Account Creation Section
+        # this tells the admin which account is being processed.
+        print("==> Creating account for %s..." % (username))
+        # This builds the Linux command to create the user account without a password initially.
         cmd = "/usr/sbin/adduser --disabled-password --gecos '%s' %s" % (gecos,username)
-        if mode == 'Y' or mode == 'y':
-            print("DRY-RUN: Would run command -> %s" % cmd)
+        
+        # If dryrun is on, it only prints the command. If off, it runs the command for real.
+        if dryrun:
+            print(cmd)
         else:
-            print("==> Creating account for %s..." % (username))
             os.system(cmd)
 
-        # Password Setup Section
+        # this tells the admin that the password setup is starting
+        print("==> Setting the password for %s..." % (username))
+        # This builds a command that pushes the password into the passwd tool so it can be set automatically
         cmd = "/bin/echo -ne '%s\n%s' | /usr/bin/sudo /usr/bin/passwd %s" % (password,password,username)
-        if mode == 'Y' or mode == 'y':
-            print("DRY-RUN: Would run command -> %s" % cmd)
+        
+        # If dryrun is on, it only prints the command. If off, it runs the command for real.
+        if dryrun:
+            print(cmd)
         else:
-            print("==> Setting the password for %s..." % (username))
             os.system(cmd)
 
         for group in groups:
-            # This checks if the group field has a dash. If it does not, it adds the user to the listed group. 
+            # This checks if the group field has a dash. If it does not, it adds the user 
+            # to the listed group. 
+            # if there is a dash, it skips the group assignment.
             if group != '-':
+                print("==> Assigning %s to the %s group..." % (username,group))
                 cmd = "/usr/sbin/adduser %s %s" % (username,group)
-                if mode == 'Y' or mode == 'y':
-                    print("DRY-RUN: Would run command -> %s" % cmd)
+                
+                # If dryrun is on, it only prints the command. If off, it runs the command for real.
+                if dryrun:
+                    print(cmd)
                 else:
-                    print("==> Assigning %s to the %s group..." % (username,group))
                     os.system(cmd)
 
 if __name__ == '__main__':
